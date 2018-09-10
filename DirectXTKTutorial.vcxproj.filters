@@ -26,6 +26,12 @@
     <Image Include="cat.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="cat.DDS">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="sunset.jpg">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="settings.manifest">

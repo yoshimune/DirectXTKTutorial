@@ -71,8 +71,9 @@ void Game::Render()
     Clear();
 
     // TODO: Add your rendering code here.
-	m_spriteBatch->Begin(SpriteSortMode_Deferred, m_states->NonPremultiplied());
+	m_spriteBatch->Begin();
 
+	m_spriteBatch->Draw(m_background.Get(), m_fullscreenRect);
 	m_spriteBatch->Draw(m_texture.Get(), m_screenPos, nullptr, Colors::White, 0.f, m_origin);
 
 	m_spriteBatch->End();
@@ -224,7 +225,7 @@ void Game::CreateDevice()
 
 	ComPtr<ID3D11Resource> resource;
 	DX::ThrowIfFailed(
-		CreateWICTextureFromFile(m_d3dDevice.Get(), L"cat.png",
+		CreateDDSTextureFromFile(m_d3dDevice.Get(), L"cat.DDS",
 			resource.GetAddressOf(),
 			m_texture.ReleaseAndGetAddressOf()));
 
@@ -236,6 +237,18 @@ void Game::CreateDevice()
 
 	m_origin.x = float(catDesc.Width / 2);
 	m_origin.y = float(catDesc.Height / 2);
+
+	//m_origin.x = float(catDesc.Width * 2);
+	//m_origin.y = float(catDesc.Height * 2);
+
+	m_tileRect.left = catDesc.Width * 2;
+	m_tileRect.right = catDesc.Width * 6;
+	m_tileRect.top = catDesc.Height * 2;
+	m_tileRect.bottom = catDesc.Height * 6;
+
+	DX::ThrowIfFailed(
+		CreateWICTextureFromFile(m_d3dDevice.Get(), L"sunset.jpg", nullptr, m_background.ReleaseAndGetAddressOf())
+	);
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -334,6 +347,11 @@ void Game::CreateResources()
     // TODO: Initialize windows-size dependent objects here.
 	m_screenPos.x = backBufferWidth / 2.f;
 	m_screenPos.y = backBufferHeight / 2.f;
+
+	m_fullscreenRect.left = 0;
+	m_fullscreenRect.top = 0;
+	m_fullscreenRect.right = backBufferWidth;
+	m_fullscreenRect.bottom = backBufferHeight;
 }
 
 void Game::OnDeviceLost()
@@ -341,6 +359,7 @@ void Game::OnDeviceLost()
     // TODO: Add Direct3D resource cleanup here.
 	m_texture.Reset();
 	m_spriteBatch.reset();
+	m_background.Reset();
 
     m_depthStencilView.Reset();
     m_renderTargetView.Reset();

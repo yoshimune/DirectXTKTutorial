@@ -176,8 +176,10 @@
     <ResourceCompile Include="resource.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="cat.DDS" />
     <Image Include="cat.png" />
     <Image Include="directx.ico" />
+    <Image Include="sunset.jpg" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="settings.manifest" />
