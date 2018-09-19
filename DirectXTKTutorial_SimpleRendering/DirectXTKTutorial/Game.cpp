@@ -71,48 +71,46 @@ void Game::Render()
     Clear();
 
     // TODO: Add your rendering code here.
-	/*** ASCII
-	const char *ascii = "Hello World";
-	std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-	std::wstring output = converter.from_bytes(ascii);
+	m_d3dContext->OMSetBlendState(m_states->Opaque(), nullptr, 0xFFFFFFFF);
+	m_d3dContext->OMSetDepthStencilState(m_states->DepthNone(), 0);
+	m_d3dContext->RSSetState(m_states->CullNone());
 
-	m_spriteBatch->Begin();
+	m_effect->Apply(m_d3dContext.Get());
 
-	Vector2 origin = m_font->MeasureString(output.c_str()) / 2.f;
+	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
-	m_font->DrawString(m_spriteBatch.get(), output.c_str(), m_fontPos, Colors::White, 0.f, origin);
-	m_spriteBatch->End();
-	***/
+	m_batch->Begin();
 
-	/*** Drop Shadow effect 
-	m_spriteBatch->Begin();
+	Vector3 xaxis(2.f, 0.f, 0.f);
+	Vector3 yaxis(0.f, 0.f, 2.f);
+	Vector3 origin = Vector3::Zero;
 
-	const wchar_t* output = L"Hello World";
-	Vector2 origin = m_font->MeasureString(output) / 2.f;
+	size_t divisions = 20;
 
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos + Vector2(1.f, 1.f), Colors::Black, 0.f, origin);
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos + Vector2(-1.f, 1.f), Colors::Black, 0.f, origin);
+	for (size_t i = 0; i <= divisions ; ++i)
+	{
+		float fPercent = float(i) / float(divisions);
+		fPercent = (fPercent * 2.0f) - 1.0f;
 
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos, Colors::White, 0.f, origin);
+		Vector3 scale = xaxis * fPercent + origin;
 
-	m_spriteBatch->End();
-	***/
+		VertexPositionColor v1(scale - yaxis, Colors::White);
+		VertexPositionColor v2(scale + yaxis, Colors::White);
+		m_batch->DrawLine(v1, v2);
+	}
 
-	/*** Outline effect ***/
-	m_spriteBatch->Begin();
+	for (size_t i = 0; i <= divisions; ++i) {
+		float fPercent = float(i) / float(divisions);
+		fPercent = (fPercent * 2.0f) - 1.0f;
 
-	const wchar_t* output = L"Hello World";
+		Vector3 scale = yaxis * fPercent + origin;
 
-	Vector2 origin = m_font->MeasureString(output) / 2.f;
+		VertexPositionColor v1(scale - xaxis, Colors::White);
+		VertexPositionColor v2(scale + xaxis, Colors::White);
+		m_batch->DrawLine(v1, v2);
+	}
 
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos + Vector2(1.f, 1.f), Colors::Black, 0.f, origin);
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos + Vector2(1.f, -1.f), Colors::Black, 0.f, origin);
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos + Vector2(-1.f, 1.f), Colors::Black, 0.f, origin);
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos + Vector2(-1.f, -1.f), Colors::Black, 0.f, origin);
-
-	m_font->DrawString(m_spriteBatch.get(), output, m_fontPos, Colors::White, 0.f, origin);
-
-	m_spriteBatch->End();
+	m_batch->End();
 
     Present();
 }
@@ -256,8 +254,25 @@ void Game::CreateDevice()
     DX::ThrowIfFailed(context.As(&m_d3dContext));
 
     // TODO: Initialize device dependent objects here (independent of window size).
-	m_font = std::make_unique<SpriteFont>(m_d3dDevice.Get(), L"myfile.spritefont");
-	m_spriteBatch = std::make_unique<SpriteBatch>(m_d3dContext.Get());
+	m_world = Matrix::Identity;
+
+	m_states = std::make_unique<CommonStates>(m_d3dDevice.Get());
+
+	m_effect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
+	m_effect->SetVertexColorEnabled(true);
+
+	void const* shaderByteCode;
+	size_t byteCodeLength;
+
+	m_effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
+
+	DX::ThrowIfFailed(
+		m_d3dDevice->CreateInputLayout(VertexPositionColor::InputElements,
+			VertexPositionColor::InputElementCount,
+			shaderByteCode, byteCodeLength,
+			m_inputLayout.ReleaseAndGetAddressOf()));
+
+	m_batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
 }
 
 // Allocate all memory resources that change on a window SizeChanged event.
@@ -354,15 +369,20 @@ void Game::CreateResources()
     DX::ThrowIfFailed(m_d3dDevice->CreateDepthStencilView(depthStencil.Get(), &depthStencilViewDesc, m_depthStencilView.ReleaseAndGetAddressOf()));
 
     // TODO: Initialize windows-size dependent objects here.
-	m_fontPos.x = backBufferWidth / 2.f;
-	m_fontPos.y = backBufferHeight / 2.f;
+	m_view = Matrix::CreateLookAt(Vector3(2.f, 2.f, 2.f), Vector3::Zero, Vector3::UnitY);
+	m_proj = Matrix::CreatePerspectiveFieldOfView(XM_PI / 4.f, float(backBufferWidth) / float(backBufferHeight), 0.1f, 10.f);
+
+	m_effect->SetView(m_view);
+	m_effect->SetProjection(m_proj);
 }
 
 void Game::OnDeviceLost()
 {
     // TODO: Add Direct3D resource cleanup here.
-	m_font.reset();
-	m_spriteBatch.reset();
+	m_states.reset();
+	m_effect.reset();
+	m_batch.reset();
+	m_inputLayout.Reset();
 
     m_depthStencilView.Reset();
     m_renderTargetView.Reset();
