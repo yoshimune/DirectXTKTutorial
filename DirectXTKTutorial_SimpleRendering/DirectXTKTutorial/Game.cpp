@@ -71,12 +71,18 @@ void Game::Render()
     Clear();
 
     // TODO: Add your rendering code here.
+	// BlendStateを設定
 	m_d3dContext->OMSetBlendState(m_states->Opaque(), nullptr, 0xFFFFFFFF);
+
+	// デプスバッファを設定
 	m_d3dContext->OMSetDepthStencilState(m_states->DepthNone(), 0);
+
+	// ラスタライザーステージを設定
 	m_d3dContext->RSSetState(m_states->CullNone());
 
 	m_effect->Apply(m_d3dContext.Get());
 
+	// 入力アセンブラステージに入力レイアウトオブジェクトをバインド
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
 	m_batch->Begin();
@@ -254,24 +260,39 @@ void Game::CreateDevice()
     DX::ThrowIfFailed(context.As(&m_d3dContext));
 
     // TODO: Initialize device dependent objects here (independent of window size).
+
+	// モデル変換行列の初期化
 	m_world = Matrix::Identity;
 
+	// m_statesの初期化
+	// CommonStates は単純なレンダリング設定の組み合わせを設定するファクトリです
 	m_states = std::make_unique<CommonStates>(m_d3dDevice.Get());
 
+	// m_effectを初期化します
+	// BasicEffectはテクスチャマッピング・vertexカラー・ディレクショナルvertexライティング・ディレクショナルピクセルライティング・フォグをサポートする実装です。
 	m_effect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
+
+	// vertexカラーを有効にします。
 	m_effect->SetVertexColorEnabled(true);
 
+
+	// シェーダーバイトコード
 	void const* shaderByteCode;
+
+	// シェーダーコードサイズ
 	size_t byteCodeLength;
 
+	// BasicEffectからVertexシェーダー（バイトコード）取得する
 	m_effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
 
+	// 入力アセンブラステージで使用される入力バッファデータを記述するためのレイアウトオブジェクトを作成する
 	DX::ThrowIfFailed(
 		m_d3dDevice->CreateInputLayout(VertexPositionColor::InputElements,
 			VertexPositionColor::InputElementCount,
 			shaderByteCode, byteCodeLength,
 			m_inputLayout.ReleaseAndGetAddressOf()));
 
+	//　描画バッチを作成する
 	m_batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
 }
 
