@@ -361,7 +361,6 @@ void Game::CreateResources()
 		{Vector3(-1.f, -1.f, 0.f), Colors::Blue}
 	};
 	m_mesh = std::make_unique<Mesh>(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, vertices, 3, Vector3(0,0.5f,0), Vector3(1,1,1));
-	std::cout << m_mesh->GetVertices() << std::endl;
 }
 
 void Game::OnDeviceLost()
