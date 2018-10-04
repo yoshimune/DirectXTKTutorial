@@ -50,6 +50,11 @@ const VertexPositionColor* Mesh::GetVertices(std::unique_ptr<VertexPositionColor
 	return vertices.get();
 }
 
+void Mesh::SetPosition(DirectX::SimpleMath::Vector3 position)
+{
+	this->position = position;
+}
+
 
 Vector3 Mesh::ApplyPosition(Vector3 origin) const
 {

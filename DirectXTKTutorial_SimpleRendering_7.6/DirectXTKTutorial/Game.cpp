@@ -58,7 +58,11 @@ void Game::Update(DX::StepTimer const& timer)
     float elapsedTime = float(timer.GetElapsedSeconds());
 
     // TODO: Add your game logic here.
-    elapsedTime;
+	float totalTime = float(timer.GetTotalSeconds());
+	float s = std::sin(totalTime);
+	float c = std::cos(totalTime);
+	m_mesh->SetPosition(Vector3(s, c, 0));
+	m_mesh_2->SetPosition(Vector3(c, s, 0));
 }
 
 // Draws the scene.
