@@ -38,12 +38,13 @@ const int Mesh::GetCount() const
 	return count;
 }
 
-const VertexPositionColor* Mesh::GetVertices()
+const VertexPositionColor* Mesh::GetVertices(std::unique_ptr<VertexPositionColor[]>& result)
 {
-	//VertexPositionColor* p = *vertices.get();
+
 	for (int i = 0; i < count; i++) {
-		vertices[i].position = ApplyScale(vertices[i].position);
-		vertices[i].position = ApplyPosition(vertices[i].position);
+		result[i].color = vertices[i].color;
+		result[i].position = ApplyScale(vertices[i].position);
+		result[i].position = ApplyPosition(result[i].position);
 	}
 
 	return vertices.get();

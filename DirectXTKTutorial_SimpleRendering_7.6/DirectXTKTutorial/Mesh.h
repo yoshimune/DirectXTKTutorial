@@ -14,7 +14,7 @@ public:
 
 	const D3D_PRIMITIVE_TOPOLOGY GetTopology() const;
 	const int GetCount() const;
-	const DirectX::VertexPositionColor* GetVertices();
+	const DirectX::VertexPositionColor* GetVertices(std::unique_ptr<DirectX::VertexPositionColor[]>& result);
 
 private:
 	const D3D_PRIMITIVE_TOPOLOGY topology;
