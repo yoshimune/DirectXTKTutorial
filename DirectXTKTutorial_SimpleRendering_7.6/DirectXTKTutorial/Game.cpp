@@ -86,6 +86,10 @@ void Game::Render()
 	std::unique_ptr<VertexPositionColor[]> vertices = std::make_unique<VertexPositionColor[]>(m_mesh->GetCount());
 	m_mesh->GetVertices(vertices);
 	m_batch->Draw(m_mesh->GetTopology(), vertices.get(), m_mesh->GetCount());
+
+	std::unique_ptr<VertexPositionColor[]> vertices_2 = std::make_unique<VertexPositionColor[]>(m_mesh_2->GetCount());
+	m_mesh_2->GetVertices(vertices_2);
+	m_batch->Draw(m_mesh_2->GetTopology(), vertices_2.get(), m_mesh_2->GetCount());
 	
 	m_batch->End();
 
@@ -365,7 +369,13 @@ void Game::CreateResources()
 	};
 	m_mesh = std::make_unique<Mesh>(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, vertices, 3, Vector3(0,0.5f,0), Vector3(1,1,1));
 
-
+	// •`‰æ‚·‚éMesh‚ð—pˆÓ
+	VertexPositionColor vertices_2[3] = {
+		{Vector3(1.f, -1.f, 0.f), Colors::Magenta},
+		{Vector3(0.f, 1.f, 0.f), Colors::Yellow},
+		{Vector3(-1.f, -1.f, 0.f), Colors::Cyan}
+	};
+	m_mesh_2 = std::make_unique<Mesh>(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, vertices_2, 3, Vector3(1.f, 0.f, 0), Vector3(1, 1, 1));
 }
 
 void Game::OnDeviceLost()

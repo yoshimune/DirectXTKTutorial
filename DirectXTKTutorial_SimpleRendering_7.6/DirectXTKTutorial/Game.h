@@ -71,4 +71,5 @@ private:
 	DirectX::SimpleMath::Matrix m_proj;
 
 	std::unique_ptr<Mesh> m_mesh;
+	std::unique_ptr<Mesh> m_mesh_2;
 };
