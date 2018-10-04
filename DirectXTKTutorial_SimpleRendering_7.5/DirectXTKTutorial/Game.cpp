@@ -85,6 +85,7 @@ void Game::Render()
 	// 入力アセンブラステージに入力レイアウトオブジェクトをバインド
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
+	// バッチ処理を開始
 	m_batch->Begin();
 
 	Vector3 xaxis(2.f, 0.f, 0.f);
@@ -115,7 +116,7 @@ void Game::Render()
 		VertexPositionColor v2(scale + xaxis, Colors::White);
 		m_batch->DrawLine(v1, v2);
 	}
-
+	// バッチ処理を終了
 	m_batch->End();
 
     Present();
