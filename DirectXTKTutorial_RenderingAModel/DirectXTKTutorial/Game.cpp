@@ -217,8 +217,31 @@ void Game::CreateDevice()
 
     // TODO: Initialize device dependent objects here (independent of window size).
 	m_states = std::make_unique<CommonStates>(m_d3dDevice.Get());
-	m_fxFactory = std::make_unique<EffectFactory>(m_d3dDevice.Get());
+	//m_fxFactory = std::make_unique<EffectFactory>(m_d3dDevice.Get());
+	m_fxFactory = std::make_unique<DGSLEffectFactory>(m_d3dDevice.Get());
 	m_model = Model::CreateFromCMO(m_d3dDevice.Get(), L"cup.cmo", *m_fxFactory);
+	m_model->UpdateEffects([](IEffect* effect)
+	{
+		auto lights = dynamic_cast<IEffectLights*>(effect);
+		if (lights)
+		{
+			lights->SetLightingEnabled(true);
+			lights->SetPerPixelLighting(true);
+			lights->SetLightEnabled(0, true);
+			lights->SetLightDiffuseColor(0, Colors::Gold);
+			lights->SetLightEnabled(1, false);
+			lights->SetLightEnabled(2, false);
+		}
+
+		auto fog = dynamic_cast<IEffectFog*>(effect);
+		if (fog)
+		{
+			fog->SetFogEnabled(true);
+			fog->SetFogColor(Colors::CornflowerBlue);
+			fog->SetFogStart(3.f);
+			fog->SetFogEnd(4.f);
+		}
+	});
 	m_world = Matrix::Identity;
 }
 
