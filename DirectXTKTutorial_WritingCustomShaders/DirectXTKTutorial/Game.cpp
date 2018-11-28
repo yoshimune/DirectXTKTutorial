@@ -96,7 +96,7 @@ namespace
 		None
 	};
 
-	BloomPresets g_Bloom = Default;
+	BloomPresets g_Bloom = Saturated;
 
 	static const VS_BLOOM_PARAMETERS g_BloomPresets[] =
 	{
@@ -178,6 +178,8 @@ void Game::Render()
 
 	m_shape->Draw(m_world, m_view, m_projction);
 
+	PostProcess();
+
     Present();
 }
 
@@ -187,13 +189,73 @@ void Game::Clear()
     // Clear the views.
     //m_d3dContext->ClearRenderTargetView(m_renderTargetView.Get(), Colors::CornflowerBlue);
 	//m_d3dContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-	m_d3dContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	//m_d3dContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+	m_d3dContext->ClearDepthStencilView(m_depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	m_d3dContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), m_depthStencilView.Get());
+	//m_d3dContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), m_depthStencilView.Get());
+	m_d3dContext->OMSetRenderTargets(1, m_sceneRT.GetAddressOf(), m_depthStencilView.Get());
 
     // Set the viewport.
     CD3D11_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(m_outputWidth), static_cast<float>(m_outputHeight));
     m_d3dContext->RSSetViewports(1, &viewport);
+}
+
+void Game::PostProcess() {
+	ID3D11ShaderResourceView* null[] = {nullptr, nullptr};
+
+	if (g_Bloom == None)
+	{
+		// Pass-through test
+		m_d3dContext->CopyResource(m_backBuffer.Get(), m_sceneTex.Get());
+	}
+	else
+	{
+		//scene -> RT1 (downsample)
+		m_d3dContext->OMSetRenderTargets(1, m_rt1RT.GetAddressOf(), nullptr);
+		m_spriteBatch->Begin(SpriteSortMode_Immediate, nullptr, nullptr, nullptr, nullptr, 
+			[=]() {
+				m_d3dContext->PSSetConstantBuffers(0, 1, m_bloomParams.GetAddressOf());
+				m_d3dContext->PSSetShader(m_bloomExtractPS.Get(), nullptr, 0);
+		});
+		m_spriteBatch->Draw(m_sceneSRV.Get(), m_bloomRect);
+		m_spriteBatch->End();
+
+		//RT1 -> RT2 (blur horizontal)
+		m_d3dContext->OMSetRenderTargets(1, m_rt2RT.GetAddressOf(), nullptr);
+		m_spriteBatch->Begin(SpriteSortMode_Immediate, nullptr, nullptr, nullptr, nullptr,
+			[=]() {
+			m_d3dContext->PSSetShader(m_gaussianBlurPS.Get(), nullptr, 0);
+			m_d3dContext->PSSetConstantBuffers(0, 1, m_blurParamsWidth.GetAddressOf());
+		});
+		m_spriteBatch->Draw(m_rt1SRV.Get(), m_bloomRect);
+		m_spriteBatch->End();
+
+		m_d3dContext->PSSetShaderResources(0, 2, null);
+
+		// RT2 -> RT1 (blur vertical)
+		m_d3dContext->OMSetRenderTargets(1, m_rt1RT.GetAddressOf(), nullptr);
+		m_spriteBatch->Begin(SpriteSortMode_Immediate, nullptr, nullptr, nullptr, nullptr, 
+			[=]() {
+			m_d3dContext->PSSetShader(m_gaussianBlurPS.Get(), nullptr, 0);
+			m_d3dContext->PSSetConstantBuffers(0, 1, m_blurParamsHeight.GetAddressOf());
+		});
+		m_spriteBatch->Draw(m_rt2SRV.Get(), m_bloomRect);
+		m_spriteBatch->End();
+
+		// RT1 + scene
+		m_d3dContext->OMSetRenderTargets(1, m_renderTargetView.GetAddressOf(), nullptr);
+		m_spriteBatch->Begin(SpriteSortMode_Immediate, nullptr, nullptr, nullptr, nullptr,
+			[=]() {
+			m_d3dContext->PSSetShader(m_bloomCombinePS.Get(), nullptr, 0);
+			m_d3dContext->PSSetShaderResources(1, 1, m_sceneSRV.GetAddressOf());
+			m_d3dContext->PSSetConstantBuffers(0, 1, m_bloomParams.GetAddressOf());
+		});
+
+		m_spriteBatch->Draw(m_rt1SRV.Get(), m_fullscreenRect);
+		m_spriteBatch->End();
+	}
+
+	m_d3dContext->PSSetShaderResources(0, 2, null);
 }
 
 // Presents the back buffer contents to the screen.
@@ -430,11 +492,13 @@ void Game::CreateResources()
     }
 
     // Obtain the backbuffer for this window which will be the final 3D rendertarget.
-    ComPtr<ID3D11Texture2D> backBuffer;
-    DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
+    //ComPtr<ID3D11Texture2D> backBuffer;
+    //DX::ThrowIfFailed(m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
+	DX::ThrowIfFailed(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &m_backBuffer));
 
     // Create a view interface on the rendertarget to use on bind.
-    DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf()));
+    //DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(m_backBuffer.Get(), nullptr, m_renderTargetView.ReleaseAndGetAddressOf()));
 
     // Allocate a 2-D surface as the depth/stencil buffer and
     // create a DepthStencil view on this surface to use on bind.
@@ -461,6 +525,29 @@ void Game::CreateResources()
 
 	blurData.SetBlurEffectParameters(0, 1.f / (backBufferHeight / 2), g_BloomPresets[g_Bloom]);
 	m_d3dContext->UpdateSubresource(m_blurParamsHeight.Get(), 0, nullptr, &blurData, sizeof(VS_BLUR_PARAMETERS), 0);
+
+	// Full-size render target for scene
+	CD3D11_TEXTURE2D_DESC sceneDesc(backBufferFormat, backBufferWidth, backBufferHeight, 1, 1, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+	DX::ThrowIfFailed(m_d3dDevice->CreateTexture2D(&sceneDesc, nullptr, m_sceneTex.GetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(m_sceneTex.Get(), nullptr, m_sceneRT.ReleaseAndGetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateShaderResourceView(m_sceneTex.Get(), nullptr, m_sceneSRV.ReleaseAndGetAddressOf()));
+
+	// Half-size blurring render targets
+	CD3D11_TEXTURE2D_DESC rtDesc(backBufferFormat, backBufferWidth / 2, backBufferHeight / 2, 1, 1, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+	ComPtr<ID3D11Texture2D> rtTexture1;
+	DX::ThrowIfFailed(m_d3dDevice->CreateTexture2D(&rtDesc, nullptr, rtTexture1.GetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(rtTexture1.Get(), nullptr, m_rt1RT.GetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateShaderResourceView(rtTexture1.Get(), nullptr, m_rt1SRV.ReleaseAndGetAddressOf()));
+
+	ComPtr<ID3D11Texture2D> rtTexture2;
+	DX::ThrowIfFailed(m_d3dDevice->CreateTexture2D(&rtDesc, nullptr, rtTexture2.GetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateRenderTargetView(rtTexture2.Get(), nullptr, m_rt2RT.ReleaseAndGetAddressOf()));
+	DX::ThrowIfFailed(m_d3dDevice->CreateShaderResourceView(rtTexture2.Get(), nullptr, m_rt2SRV.ReleaseAndGetAddressOf()));
+
+	m_bloomRect.left = 0;
+	m_bloomRect.top = 0;
+	m_bloomRect.right = backBufferWidth / 2;
+	m_bloomRect.bottom = backBufferHeight / 2;
 }
 
 void Game::OnDeviceLost()
@@ -484,6 +571,15 @@ void Game::OnDeviceLost()
     m_swapChain.Reset();
     m_d3dContext.Reset();
     m_d3dDevice.Reset();
+
+	m_sceneTex.Reset();
+	m_sceneSRV.Reset();
+	m_sceneRT.Reset();
+	m_rt1SRV.Reset();
+	m_rt1RT.Reset();
+	m_rt2SRV.Reset();
+	m_rt2RT.Reset();
+	m_backBuffer.Reset();
 
     CreateDevice();
 

@@ -36,6 +36,8 @@ private:
     void Update(DX::StepTimer const& timer);
     void Render();
 
+	void PostProcess();
+
     void Clear();
     void Present();
 
@@ -76,4 +78,18 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_bloomParams;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_blurParamsWidth;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> m_blurParamsHeight;
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> m_backBuffer;
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> m_sceneTex;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_sceneSRV;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_sceneRT;
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_rt1SRV;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_rt1RT;
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_rt2SRV;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_rt2RT;
+
+	RECT m_bloomRect;
 };
